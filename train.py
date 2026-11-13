@@ -1,19 +1,19 @@
 """
 ================================================================================
-CHƯƠNG TRÌNH HUẤN LUYỆN VÀ ĐÁNH GIÁ TOÀN DIỆN MÔ HÌNH (TRAINING PIPELINE)
+CHƯƠNG TRÌNH HUẤN LUYỆN VÀ ĐÁNH GIÁ MÔ HÌNH (TRAINING PIPELINE)
 File: train.py
 ================================================================================
 MỤC ĐÍCH:
-    Kịch bản chính thực hiện toàn bộ luồng học máy (Machine Learning Pipeline):
-    1. Đọc dữ liệu Train, Validation, Test từ thư mục `dataset/processed_data/`.
+    Kịch bản chính thực hiện luồng học máy (Machine Learning Pipeline):
+    1. Đọc dữ liệu Train, Validation từ thư mục `dataset/processed_data/`.
     2. Trích chọn đặc trưng:
        - TF-IDF Vectorizer (5000 chiều) -> Dùng cho Naive Bayes & Linear SVM.
        - Word2Vec Vectorizer (150 chiều) -> Dùng cho Linear SVM (Word2Vec).
-    3. Huấn luyện và đánh giá:
+    3. Huấn luyện và đánh giá trên tập Validation:
        - Mô hình 1: Multinomial Naive Bayes (trên TF-IDF).
        - Mô hình 2: Linear SVM (trên TF-IDF).
        - Mô hình 3: Linear SVM (trên Word2Vec).
-    4. So sánh trực quan hiệu năng của các mô hình trên cả Validation và Test.
+    4. So sánh trực quan hiệu năng của các mô hình trên tập Validation.
     5. Lưu toàn bộ các thành phần vào `saved_models/`:
        - `tfidf_vectorizer.pkl`   : Bộ trích xuất đặc trưng TF-IDF
        - `w2v_vectorizer.pkl`     : Bộ trích xuất đặc trưng Word2Vec
@@ -52,25 +52,21 @@ def main():
     print("=" * 65)
 
     # --------------------------------------------------------------------------
-    # BƯỚC 1: ĐỌC DỮ LIỆU ĐÃ QUA TIỀN XỬ LÝ (Train, Validation, Test)
+    # BƯỚC 1: ĐỌC DỮ LIỆU ĐÃ QUA TIỀN XỬ LÝ (Train, Validation)
     # --------------------------------------------------------------------------
     train_path = "dataset/processed_data/train.csv"
     val_path = "dataset/processed_data/valid.csv"
-    test_path = "dataset/processed_data/test.csv"
 
     print("\n[BƯỚC 1] Đang nạp dữ liệu từ thư mục dataset/processed_data/...")
     df_train = pd.read_csv(train_path).dropna(subset=["text"])
     df_val = pd.read_csv(val_path).dropna(subset=["text"])
-    df_test = pd.read_csv(test_path).dropna(subset=["text"])
 
     print(f"- Tập Huấn luyện (Train) : {len(df_train)} dòng")
     print(f"- Tập Kiểm tra (Val)     : {len(df_val)} dòng (chọn mô hình & chỉnh tham số)")
-    print(f"- Tập Đánh giá (Test)    : {len(df_test)} dòng (đánh giá hiệu năng cuối cùng)")
 
     # Tách riêng cột văn bản (X) và cột nhãn mục tiêu (y)
     X_train_text, y_train = df_train["text"], df_train["label"]
     X_val_text, y_val = df_val["text"], df_val["label"]
-    X_test_text, y_test = df_test["text"], df_test["label"]
 
     # --------------------------------------------------------------------------
     # BƯỚC 2: TRÍCH CHỌN ĐẶC TRƯNG VĂN BẢN (TF-IDF & WORD2VEC)
@@ -81,11 +77,9 @@ def main():
 
     X_train_tfidf = tfidf_vectorizer.fit_transform(X_train_text)
     X_val_tfidf = tfidf_vectorizer.transform(X_val_text)
-    X_test_tfidf = tfidf_vectorizer.transform(X_test_text)
 
     print(f"- Kích thước ma trận Train (TF-IDF): {X_train_tfidf.shape}")
     print(f"- Kích thước ma trận Val   (TF-IDF): {X_val_tfidf.shape}")
-    print(f"- Kích thước ma trận Test  (TF-IDF): {X_test_tfidf.shape}")
 
     # 2.2. Huấn luyện bộ nhúng từ Word2Vec (150 chiều)
     print("\n[BƯỚC 2.2] Huấn luyện bộ trích chọn đặc trưng Word2Vec (150 chiều)...")
@@ -95,11 +89,9 @@ def main():
     # Chuyển đổi các tập dữ liệu sang vector Word2Vec
     X_train_w2v = w2v_vectorizer.transform(X_train_text)
     X_val_w2v = w2v_vectorizer.transform(X_val_text)
-    X_test_w2v = w2v_vectorizer.transform(X_test_text)
 
     print(f"- Kích thước ma trận Train (Word2Vec): {X_train_w2v.shape}")
     print(f"- Kích thước ma trận Val   (Word2Vec): {X_val_w2v.shape}")
-    print(f"- Kích thước ma trận Test  (Word2Vec): {X_test_w2v.shape}")
 
     # Tạo thư mục lưu kết quả và mô hình (nếu chưa có)
     os.makedirs("results", exist_ok=True)
@@ -114,10 +106,7 @@ def main():
 
     y_val_pred_nb = nb_model.predict(X_val_tfidf)
     nb_val_metrics = evaluate_model(y_val, y_val_pred_nb, model_name="Naive Bayes (Val)")
-
-    y_test_pred_nb = nb_model.predict(X_test_tfidf)
-    nb_test_metrics = evaluate_model(y_test, y_test_pred_nb, model_name="Naive Bayes (Test)")
-    plot_confusion_matrix(y_test, y_test_pred_nb, model_name="Naive Bayes (Test)", save_path="results/cm_naive_bayes.png")
+    plot_confusion_matrix(y_val, y_val_pred_nb, model_name="Naive Bayes (Val)", save_path="results/cm_naive_bayes.png")
 
     # --------------------------------------------------------------------------
     # BƯỚC 4: HUẤN LUYỆN VÀ ĐÁNH GIÁ MÔ HÌNH 2 - LINEAR SVM (TF-IDF)
@@ -128,10 +117,7 @@ def main():
 
     y_val_pred_svm = svm_tfidf_model.predict(X_val_tfidf)
     svm_val_metrics = evaluate_model(y_val, y_val_pred_svm, model_name="Linear SVM TF-IDF (Val)")
-
-    y_test_pred_svm = svm_tfidf_model.predict(X_test_tfidf)
-    svm_test_metrics = evaluate_model(y_test, y_test_pred_svm, model_name="Linear SVM TF-IDF (Test)")
-    plot_confusion_matrix(y_test, y_test_pred_svm, model_name="Linear SVM (Test)", save_path="results/cm_svm.png")
+    plot_confusion_matrix(y_val, y_val_pred_svm, model_name="Linear SVM (Val)", save_path="results/cm_svm.png")
 
     # --------------------------------------------------------------------------
     # BƯỚC 5: HUẤN LUYỆN VÀ ĐÁNH GIÁ MÔ HÌNH 3 - LINEAR SVM (WORD2VEC)
@@ -142,14 +128,12 @@ def main():
 
     y_val_pred_w2v = svm_w2v_model.predict(X_val_w2v)
     w2v_val_metrics = evaluate_model(y_val, y_val_pred_w2v, model_name="Linear SVM W2V (Val)")
-
-    y_test_pred_w2v = svm_w2v_model.predict(X_test_w2v)
-    w2v_test_metrics = evaluate_model(y_test, y_test_pred_w2v, model_name="Linear SVM W2V (Test)")
+    plot_confusion_matrix(y_val, y_val_pred_w2v, model_name="Linear SVM W2V (Val)", save_path="results/cm_svm_w2v.png")
 
     # --------------------------------------------------------------------------
-    # BƯỚC 6: TỔNG HỢP VÀ SO SÁNH HIỆU NĂNG TẤT CẢ CÁC MÔ HÌNH
+    # BƯỚC 6: TỔNG HỢP VÀ SO SÁNH HIỆU NĂNG TẤT CẢ CÁC MÔ HÌNH (VALIDATION)
     # --------------------------------------------------------------------------
-    print("\n[BƯỚC 6] BẢNG TỔNG HỢP VÀ SO SÁNH HIỆU NĂNG CÁC MÔ HÌNH:")
+    print("\n[BƯỚC 6] BẢNG TỔNG HỢP VÀ SO SÁNH HIỆU NĂNG CÁC MÔ HÌNH (TẬP VALIDATION):")
     summary_data = [
         {
             "Mô hình": "Naive Bayes (TF-IDF)",
@@ -160,14 +144,6 @@ def main():
             "Toxic Recall": round(nb_val_metrics["toxic_recall"], 4)
         },
         {
-            "Mô hình": "Naive Bayes (TF-IDF)",
-            "Tập": "Test (Cuối)",
-            "Accuracy (%)": round(nb_test_metrics["accuracy"] * 100, 2),
-            "Macro F1": round(nb_test_metrics["macro_f1"], 4),
-            "Toxic F1": round(nb_test_metrics["toxic_f1"], 4),
-            "Toxic Recall": round(nb_test_metrics["toxic_recall"], 4)
-        },
-        {
             "Mô hình": "Linear SVM (TF-IDF)",
             "Tập": "Validation",
             "Accuracy (%)": round(svm_val_metrics["accuracy"] * 100, 2),
@@ -176,28 +152,12 @@ def main():
             "Toxic Recall": round(svm_val_metrics["toxic_recall"], 4)
         },
         {
-            "Mô hình": "Linear SVM (TF-IDF)",
-            "Tập": "Test (Cuối)",
-            "Accuracy (%)": round(svm_test_metrics["accuracy"] * 100, 2),
-            "Macro F1": round(svm_test_metrics["macro_f1"], 4),
-            "Toxic F1": round(svm_test_metrics["toxic_f1"], 4),
-            "Toxic Recall": round(svm_test_metrics["toxic_recall"], 4)
-        },
-        {
             "Mô hình": "Linear SVM (Word2Vec)",
             "Tập": "Validation",
             "Accuracy (%)": round(w2v_val_metrics["accuracy"] * 100, 2),
             "Macro F1": round(w2v_val_metrics["macro_f1"], 4),
             "Toxic F1": round(w2v_val_metrics["toxic_f1"], 4),
             "Toxic Recall": round(w2v_val_metrics["toxic_recall"], 4)
-        },
-        {
-            "Mô hình": "Linear SVM (Word2Vec)",
-            "Tập": "Test (Cuối)",
-            "Accuracy (%)": round(w2v_test_metrics["accuracy"] * 100, 2),
-            "Macro F1": round(w2v_test_metrics["macro_f1"], 4),
-            "Toxic F1": round(w2v_test_metrics["toxic_f1"], 4),
-            "Toxic Recall": round(w2v_test_metrics["toxic_recall"], 4)
         }
     ]
     df_summary = pd.DataFrame(summary_data)
@@ -231,7 +191,7 @@ def main():
     print(f"- [ĐÃ LƯU] Word2Vec Vectorizer (150 chiều) -> {w2v_file}")
     print(f"- [ĐÃ LƯU] Mô hình Linear SVM (Word2Vec)   -> {svm_w2v_file}")
 
-    print("- [ĐÃ LƯU] Biểu đồ ma trận nhầm lẫn -> results/cm_naive_bayes.png, results/cm_svm.png")
+    print("- [ĐÃ LƯU] Biểu đồ ma trận nhầm lẫn -> results/cm_naive_bayes.png, results/cm_svm.png, results/cm_svm_w2v.png")
     print("\n" + "=" * 65)
     print("   [HOÀN TẤT] Huấn luyện và lưu toàn bộ mô hình thành công!")
     print("=" * 65)

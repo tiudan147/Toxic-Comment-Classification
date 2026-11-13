@@ -38,7 +38,6 @@ CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 if CURRENT_DIR not in sys.path:
     sys.path.append(CURRENT_DIR)
 
-from src.preprocessing.process_text import process_text
 from src.evaluation import evaluate_model, plot_confusion_matrix
 
 
@@ -75,18 +74,10 @@ MODEL_PAIRS = [
 # ==============================================================================
 def predict_single_text(text: str):
     """
-    Nhận vào một câu văn bản bất kỳ, chạy qua cả 3 cặp mô hình và in kết quả so sánh.
-    
-    Tham số:
-        text (str): Câu bình luận cần kiểm tra.
-        
-    Trả về:
-        dict: Kết quả phân loại của từng cặp mô hình.
+    Nhận vào một câu văn bản (đã xử lý), chạy qua cả 3 cặp mô hình và trả về kết quả.
     """
-    cleaned = process_text(text)
     results = {
-        "text_raw": text,
-        "text_clean": cleaned,
+        "text": text,
         "predictions": {}
     }
 
@@ -109,7 +100,7 @@ def predict_single_text(text: str):
         if vectorizer is None:
             continue
 
-        feat = vectorizer.transform([cleaned])
+        feat = vectorizer.transform([str(text)])
         pred = int(model.predict(feat)[0])
         label_str = "Toxic (Độc hại)" if pred == 1 else "Non-toxic (Lành tính)"
 
@@ -124,10 +115,10 @@ def predict_single_text(text: str):
 # ==============================================================================
 # HÀM 2: KIỂM THỬ VÀ SO SÁNH TẤT CẢ CÁC CẶP MÔ HÌNH TRÊN TẬP DỮ LIỆU FILE CSV
 # ==============================================================================
-def test_all_pairs(csv_path="dataset/fb_test.csv"):
+def test_all_pairs(csv_path="dataset/processed_data/test.csv"):
     """
-    Đọc dữ liệu kiểm thử thực tế, làm sạch một lần duy nhất,
-    sau đó lần lượt đánh giá từng cặp mô hình và in bảng so sánh toàn diện.
+    Đọc dữ liệu kiểm thử từ tập test đã qua tiền xử lý (processed_data/test.csv),
+    chạy thẳng qua bộ trích xuất đặc trưng và đánh giá từng cặp mô hình.
     """
     if not os.path.exists(csv_path):
         print(f"\n[LỖI] Không tìm thấy file dữ liệu kiểm thử tại: {csv_path}\n")
@@ -148,24 +139,23 @@ def test_all_pairs(csv_path="dataset/fb_test.csv"):
     print("=" * 70)
 
     # --------------------------------------------------------------------------
-    # BƯỚC 1: Đọc dữ liệu từ file CSV
+    # BƯỚC 1: Đọc dữ liệu từ file CSV (bỏ các dòng null text nếu có)
     # --------------------------------------------------------------------------
-    df = pd.read_csv(csv_path)
+    df = pd.read_csv(csv_path).dropna(subset=["text"])
     total_samples = len(df)
     c0_count = (df["label"] == 0).sum()
     c1_count = (df["label"] == 1).sum()
 
-    print(f"\n[BƯỚC 1] Đã nạp {total_samples} dòng dữ liệu.")
+    print(f"\n[BƯỚC 1] Đã nạp {total_samples} dòng dữ liệu hợp lệ.")
     print("         Phân bố nhãn thực tế:")
     print(f"         - Non-toxic (0 - Lành tính) : {c0_count} mẫu ({c0_count/total_samples*100:.1f}%)")
     print(f"         - Toxic (1 - Độc hại)       : {c1_count} mẫu ({c1_count/total_samples*100:.1f}%)")
 
     # --------------------------------------------------------------------------
-    # BƯỚC 2: Tiền xử lý văn bản một lần duy nhất (Tiết kiệm thời gian)
+    # BƯỚC 2: Sử dụng trực tiếp dữ liệu đã tiền xử lý từ processed_data/test.csv
     # --------------------------------------------------------------------------
-    print("\n[BƯỚC 2] Đang tiền xử lý toàn bộ văn bản (process_text)...")
-    cleaned_texts = [process_text(t) for t in df["text"]]
-    df["text_clean"] = cleaned_texts
+    print("\n[BƯỚC 2] Dữ liệu đã qua tiền xử lý, nạp trực tiếp danh sách văn bản...")
+    texts = df["text"].astype(str).tolist()
     y_true = df["label"]
 
     # --------------------------------------------------------------------------
@@ -176,12 +166,12 @@ def test_all_pairs(csv_path="dataset/fb_test.csv"):
 
     if os.path.exists("saved_models/tfidf_vectorizer.pkl"):
         tfidf_vec = joblib.load("saved_models/tfidf_vectorizer.pkl")
-        features_cache["tfidf"] = tfidf_vec.transform(cleaned_texts)
+        features_cache["tfidf"] = tfidf_vec.transform(texts)
         print(f"- Đã biến đổi ma trận TF-IDF   : {features_cache['tfidf'].shape}")
 
     if os.path.exists("saved_models/w2v_vectorizer.pkl"):
         w2v_vec = joblib.load("saved_models/w2v_vectorizer.pkl")
-        features_cache["w2v"] = w2v_vec.transform(cleaned_texts)
+        features_cache["w2v"] = w2v_vec.transform(texts)
         print(f"- Đã biến đổi ma trận Word2Vec : {features_cache['w2v'].shape}")
 
     # Tạo thư mục results nếu chưa có
@@ -219,10 +209,10 @@ def test_all_pairs(csv_path="dataset/fb_test.csv"):
         })
 
     # --------------------------------------------------------------------------
-    # BƯỚC 5: IN BẢNG TỔNG HỢP VÀ SO SÁNH TẤT CẢ CÁC CẶP TRÊN FB_TEST
+    # BƯỚC 5: IN BẢNG TỔNG HỢP VÀ SO SÁNH TẤT CẢ CÁC CẶP TRÊN TEST.CSV
     # --------------------------------------------------------------------------
     print("\n" + "=" * 70)
-    print("   BẢNG TỔNG HỢP SO SÁNH HIỆU NĂNG CÁC CẶP TRÊN FB_TEST (605 mẫu):")
+    print(f"   BẢNG TỔNG HỢP SO SÁNH HIỆU NĂNG CÁC CẶP TRÊN TẬP TEST ({total_samples} mẫu):")
     print("=" * 70)
     df_compare = pd.DataFrame(comparison_summary)
     print(df_compare.to_string(index=False))
@@ -230,7 +220,7 @@ def test_all_pairs(csv_path="dataset/fb_test.csv"):
     # --------------------------------------------------------------------------
     # BƯỚC 6: Lưu kết quả dự đoán chi tiết của tất cả các mô hình ra file CSV
     # --------------------------------------------------------------------------
-    output_csv = "results/fb_test_predictions.csv"
+    output_csv = "results/test_predictions.csv"
     df.to_csv(output_csv, index=False, encoding="utf-8-sig")
     print(f"\n[XONG] Đã lưu chi tiết dự đoán của tất cả mô hình vào: {output_csv}")
     print(f"[XONG] Đã lưu ảnh ma trận nhầm lẫn tại thư mục: results/")
@@ -245,8 +235,7 @@ def test_all_pairs(csv_path="dataset/fb_test.csv"):
         row = df.iloc[i]
         real_lbl = "Toxic (1)" if row["label"] == 1 else "Non-toxic (0)"
         print(f"\n[Mẫu #{i+1}] Nhãn thật: {real_lbl}")
-        print(f"- Gốc : {row['text'][:90]}...")
-        print(f"- Sạch: {row['text_clean'][:90]}...")
+        print(f"- Nội dung: {str(row['text'])[:90]}...")
         print("  Dự đoán của từng cặp:")
         for pair in available_pairs:
             p_val = row[f"pred_{pair['id']}"]
@@ -263,20 +252,5 @@ def test_all_pairs(csv_path="dataset/fb_test.csv"):
 # ĐIỂM BẮT ĐẦU CHƯƠNG TRÌNH
 # ==============================================================================
 if __name__ == "__main__":
-    # 1. Chạy kiểm thử và so sánh đồng thời tất cả các cặp mô hình trên fb_test.csv
-    test_all_pairs(csv_path="dataset/fb_test.csv")
-
-    # 2. Thử nghiệm dự đoán 2 câu tự chọn trên CẢ 3 CẶP MÔ HÌNH để so sánh trực quan
-    print("\n" + "=" * 70)
-    print("   THỬ NGHIỆM DỰ ĐOÁN CÂU TỰ DO TRÊN TẤT CẢ CÁC CẶP MÔ HÌNH:")
-    print("=" * 70)
-    custom_sentences = [
-        "Cảm ơn bạn nhiều nhé, bài viết rất hữu ích!",
-        "Thằng chó này mày ăn nói xấc xược cút đi!"
-    ]
-    for s in custom_sentences:
-        res = predict_single_text(s)
-        print(f"\nCâu: \"{res['text_raw']}\"")
-        for model_name, p_info in res["predictions"].items():
-            print(f"  -> {model_name:25}: {p_info['label_name']}")
-    print()
+    # Chạy kiểm thử và so sánh đồng thời tất cả các cặp mô hình trên processed_data/test.csv
+    test_all_pairs(csv_path="dataset/processed_data/test.csv")
