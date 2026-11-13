@@ -46,31 +46,3 @@ class Word2VecVectorizer:
         self.fit(texts, y)
         return self.transform(texts)
 
-
-
-if __name__ == "__main__":
-    sample_texts = [
-        "mày ngu_ngốc quá đấy",
-        "hôm_nay thời_tiết rất đẹp và dễ_chịu",
-        "đồ ngu lừa_đảo cút đi"
-    ]
-
-    print("==================================================")
-    print("DEMO TRÍCH XUẤT ĐẶC TRƯNG VĂN BẢN (TF-IDF & WORD2VEC)")
-    print("==================================================")
-
-    # 1. Thử nghiệm TF-IDF
-    print("\n--- 1. KẾT QUẢ VỚI TF-IDF ---")
-    tfidf = get_tfidf_vectorizer()
-    X_tfidf = tfidf.fit_transform(sample_texts)
-    print(f"- Số mẫu văn bản       : {X_tfidf.shape[0]}")
-    print(f"- Số lượng đặc trưng   : {X_tfidf.shape[1]}")
-    print(f"- Danh sách từ vựng    : {tfidf.get_feature_names_out()[:10]}...")
-    print(f"- Ma trận TF-IDF (dạng mảng numpy):\n{X_tfidf.toarray()[:2]}")
-
-    # 2. Thử nghiệm Word2Vec
-    print("\n--- 2. KẾT QUẢ VỚI WORD2VEC (Mean Vector) ---")
-    w2v = Word2VecVectorizer(vector_size=10, min_count=1, epochs=5)
-    X_w2v = w2v.fit_transform(sample_texts)
-    print(f"- Kích thước ma trận Word2Vec : {X_w2v.shape} (3 câu, mỗi câu là 1 vector 10 chiều)")
-    print(f"- Vector của câu đầu tiên:\n{X_w2v[0]}")
