@@ -55,13 +55,13 @@ def main():
     # BƯỚC 1: ĐỌC DỮ LIỆU ĐÃ QUA TIỀN XỬ LÝ (Train, Validation, Test)
     # --------------------------------------------------------------------------
     train_path = "dataset/processed_data/train.csv"
-    val_path = "dataset/processed_data/val.csv"
+    val_path = "dataset/processed_data/valid.csv"
     test_path = "dataset/processed_data/test.csv"
 
     print("\n[BƯỚC 1] Đang nạp dữ liệu từ thư mục dataset/processed_data/...")
-    df_train = pd.read_csv(train_path)
-    df_val = pd.read_csv(val_path)
-    df_test = pd.read_csv(test_path)
+    df_train = pd.read_csv(train_path).dropna(subset=["text"])
+    df_val = pd.read_csv(val_path).dropna(subset=["text"])
+    df_test = pd.read_csv(test_path).dropna(subset=["text"])
 
     print(f"- Tập Huấn luyện (Train) : {len(df_train)} dòng")
     print(f"- Tập Kiểm tra (Val)     : {len(df_val)} dòng (chọn mô hình & chỉnh tham số)")
@@ -77,7 +77,7 @@ def main():
     # --------------------------------------------------------------------------
     # 2.1. Trích chọn đặc trưng TF-IDF (5000 chiều)
     print("\n[BƯỚC 2.1] Trích xuất đặc trưng bằng TF-IDF Vectorizer (5000 chiều)...")
-    tfidf_vectorizer = get_tfidf_vectorizer(max_features=5000, ngram_range=(1, 2))
+    tfidf_vectorizer = get_tfidf_vectorizer(max_features=5000)
 
     X_train_tfidf = tfidf_vectorizer.fit_transform(X_train_text)
     X_val_tfidf = tfidf_vectorizer.transform(X_val_text)
@@ -89,7 +89,7 @@ def main():
 
     # 2.2. Huấn luyện bộ nhúng từ Word2Vec (150 chiều)
     print("\n[BƯỚC 2.2] Huấn luyện bộ trích chọn đặc trưng Word2Vec (150 chiều)...")
-    w2v_vectorizer = Word2VecVectorizer(vector_size=150, window=5, min_count=2, sg=1, epochs=10)
+    w2v_vectorizer = Word2VecVectorizer(vector_size=150, window=5, min_count=2, epochs=10)
     w2v_vectorizer.fit(X_train_text)
 
     # Chuyển đổi các tập dữ liệu sang vector Word2Vec
