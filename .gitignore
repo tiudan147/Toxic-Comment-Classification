@@ -1,2 +1,5 @@
 /dataset
 /backup
+note.md
+__pycache__/
+*.pyc
