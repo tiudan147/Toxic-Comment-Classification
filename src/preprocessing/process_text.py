@@ -13,7 +13,8 @@ vn_vocab = {w.lower() for w in raw_words} | {sub.lower() for w in raw_words for 
 
 def process_text(text):
     # đưa về chuẩn NFC
-    text  = unicodedata.normalize("NFC", text)
+    # text  = unicodedata.normalize("NFC", text)
+    text  = unicodedata.normalize("NFKC", text)
 
     # làm sạch
     text = re.sub(r"<[^>]+>", " ", text) # bỏ html
@@ -91,5 +92,6 @@ def process_text(text):
     return text
 
 if __name__ == "__main__":
-    text = "Địt mẹ mày làm sao ???????"
-    print(process_text(text))
+    text = "Tức thật sự 😡🤬 @#$%!!?"
+    print(text)
+    print("----> " + process_text(text))

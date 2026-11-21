@@ -16,25 +16,30 @@ def process_dataset(df):
     return processed_df
 
 # Chia dữ liệu ra tập train, test và lưu lại trong dataset
-df = pd.read_csv(r"..\..\dataset\test.csv")
+# df = pd.read_csv(r"..\..\dataset\raw_data\test.csv")
+df = pd.read_csv(r"..\..\dataset\raw_data\merged_dataset.csv")
 
 processed_df = process_dataset(df)
 
-processed_df.to_csv(r"..\..\dataset\processed_data\test.csv")
+processed_df = processed_df.dropna(subset=['text', 'label']) # xóa dòng bị trống
 
-# X = processed_df["text"]
-# y = processed_df["label"]
-# X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, stratify=y, random_state=42)
+processed_df = processed_df.drop_duplicates() # xóa dòng bị lặp
 
-# train = pd.DataFrame({
-#     "text": X_train,
-#     "label": y_train
-# })
+# processed_df.to_csv(r"..\..\dataset\processed_data\test.csv")
 
-# valid = pd.DataFrame({
-#     "text": X_test,
-#     "label": y_test
-# })
+X = processed_df["text"]
+y = processed_df["label"]
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, stratify=y, random_state=42)
 
-# train.to_csv(r"..\..\dataset\processed_data\train.csv")
-# valid.to_csv(r"..\..\dataset\processed_data\valid.csv")
+train = pd.DataFrame({
+    "text": X_train,
+    "label": y_train
+})
+
+valid = pd.DataFrame({
+    "text": X_test,
+    "label": y_test
+})
+
+train.to_csv(r"..\..\dataset\processed_data\train.csv")
+valid.to_csv(r"..\..\dataset\processed_data\valid.csv")
