@@ -23,7 +23,7 @@ processed_df = process_dataset(df)
 
 processed_df = processed_df.dropna(subset=['text', 'label']) # xóa dòng bị trống
 
-processed_df = processed_df.drop_duplicates() # xóa dòng bị lặp
+processed_df = processed_df.drop_duplicates(subset=['text'], keep='first') # xóa dòng bị lặp, giữ cái đầu tiên
 
 # processed_df.to_csv(r"..\..\dataset\processed_data\test.csv")
 
